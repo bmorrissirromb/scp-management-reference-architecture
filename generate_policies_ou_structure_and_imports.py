@@ -1,12 +1,12 @@
 """
 Summary
-    This script is a useful starting point if you have manually-managed SCPs that you want to migrate to IaC.
-    This script will parse the OU structure and create SCP JSONs in a local representation of the OU structure.
+    This script is a useful starting point if you have manually-managed RCP/SCPs that you want to migrate to IaC.
+    This script will parse the OU structure and create RCP/SCP JSONs in a local representation of the OU structure.
     It will also generate import files to be used by Terraform, unless specified otherwise.
 
-    This script can also be used to refresh the OU structure to make it easier to add new SCP attachments.
-    To run this script to just refresh the OU structure and not make SCP updates or generate imports, run:
-    python generate_scp_ou_structure_and_imports.py --skip-import-creation --skip-customer-scp-refresh
+    This script can also be used to refresh the OU structure to make it easier to add new RCP/SCP attachments.
+    To run this script to just refresh the OU structure and not make RCP/SCP updates or generate imports, run:
+    python generate_policies_ou_structure_and_imports.py --skip-import-creation --skip-customer-scp-refresh
 """
 
 import argparse
