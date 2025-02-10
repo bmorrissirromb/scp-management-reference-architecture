@@ -65,6 +65,7 @@ Before making changes, validate that the SCP statement(s) you are adding are not
 
 # Initial Implementation Steps
 
+1. If managing Resource Control Policies through this solution, ensure that Resource Control Policies have been enabled from the AWS Organizations settings. If not managing RCPs through this solution, include the `--skip-rcps` flag when running the Python scripts.
 1. Determine if you want to run this in the management or Organizations delegated admin account. Generally, you should use a delegated administrator when possible. This will be called the "SCP Account" in later steps
    1. If using a delegated administrator account, you will need to make sure that the Organizations service gives appropriate permissions to the account. This is an example policy to provide SCP management permissions in the Organizations->Settings menu (replace XXXX with your delegated administrator account ID):
    ```json
@@ -115,6 +116,7 @@ Before making changes, validate that the SCP statement(s) you are adding are not
          ],
          "Resource": [
            "arn:aws:organizations::*:policy/*/service_control_policy/*",
+           "arn:aws:organizations::*:policy/*/resource_control_policy/*",
            "arn:aws:organizations::*:account/*/*",
            "arn:aws:organizations::*:ou/*/*",
            "arn:aws:organizations::*:root/*/*"
