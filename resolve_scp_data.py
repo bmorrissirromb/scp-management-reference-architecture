@@ -40,6 +40,7 @@ def get_scp_attachments(current_target_id, current_path, data_dict, org_client):
             os.path.isfile(os.path.join(current_path, each_item))
             and not re.search(r"\.guardrail$", each_item)
             and not re.search(r"^FullAWSAccess\.placeholder$", each_item)
+            and not re.search(r"\.rcp$", each_item)
         ):
             custom_scp_count += 1
         if custom_scp_count > 4:
