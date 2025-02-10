@@ -84,6 +84,42 @@ def get_all_policy_attachments(
     return list_of_policies_attached
 
 
+# Function to retrieve all child OUs recursively using NextTokens
+def get_all_child_ous(parent_id, org_client, next_token=None, child_ous=[]):
+    if next_token:
+        response = org_client.list_organizational_units_for_parent(
+            ParentId=parent_id, NextToken=next_token
+        )
+    else:
+        response = org_client.list_organizational_units_for_parent(ParentId=parent_id)
+
+    child_ous.extend(response["OrganizationalUnits"])
+
+    if "NextToken" in response:
+        get_all_child_ous(parent_id, org_client, response["NextToken"], child_ous)
+
+    return child_ous
+
+
+# Function to retrieve all child accounts recursively using NextTokens
+def get_all_child_accounts(parent_id, org_client, next_token=None, child_accounts=[]):
+    if next_token:
+        response = org_client.list_accounts_for_parent(
+            ParentId=parent_id, NextToken=next_token
+        )
+    else:
+        response = org_client.list_accounts_for_parent(ParentId=parent_id)
+
+    child_accounts.extend(response["Accounts"])
+
+    if "NextToken" in response:
+        get_all_child_accounts(
+            parent_id, org_client, response["NextToken"], child_accounts
+        )
+
+    return child_accounts
+
+
 def get_child_ou_and_scps(
     ou_id,
     starting_folder,
@@ -212,9 +248,17 @@ import {{
 
     # Recursively process child OUs and accounts
     if not re.match(r"\d{12}", ou_id):
-        child_ous = org_client.list_organizational_units_for_parent(ParentId=ou_id)
-        child_accounts = org_client.list_accounts_for_parent(ParentId=ou_id)
-        for child in child_ous["OrganizationalUnits"] + child_accounts["Accounts"]:
+        child_ous = get_all_child_ous(
+            parent_id=ou_id,
+            org_client=org_client,
+            child_ous=[],
+        )
+        child_accounts = get_all_child_accounts(
+            parent_id=ou_id,
+            org_client=org_client,
+            child_accounts=[],
+        )
+        for child in child_ous + child_accounts:
             attachment_dict.update(
                 get_child_ou_and_scps(
                     ou_id=child["Id"],
