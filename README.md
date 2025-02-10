@@ -1,6 +1,6 @@
-# Service Control Policy (SCP) Management Pipeline
+# Control Policy (RCP/SCP) Management Pipeline
 
-This repository provides an IaC management solution for Service Control Policies (SCPs). The repository can be used to quickly migrate from manually-managed SCPs. **This solution DOES NOT include/import the SCPs created by AWS Control Tower as Control tower Guardrails**.
+This repository provides an IaC management solution for Control Policies (RCP/SCPs). The repository can be used to quickly migrate from manually-managed RCP/SCPs. **This solution DOES NOT include/import the SCPs created by AWS Control Tower as Control tower Guardrails**.
 
 This particular model is forked from `https://github.com/aws-samples/scp-management-reference-architecture`. This model uses a more visual structure for SCP management and uses Python to dynamically create Terraform resource statements, rather than having maintainers update the Terraform code directly.
 
@@ -34,14 +34,14 @@ This solution uses Python to generate Terraform content.
 
 > NOTE:
 >
-> 1. All SCP files created in this repository are JSON files (`.json` extension) -- this is to match the output that will be visible in the AWS console.
+> 1. All RCP/SCP files created in this repository are JSON files (even if they lack the `.json` extension) -- this is to match the output that will be visible in the AWS console.
 > 2. [Future] If you need to use Terraform template files instead, use the extension `.json.tpl`. Terraform template files allow for dynamic substitution of string data (eg. if I need to evaluate an account ID from a variable at Terraform Plan time). The `resolve_scp_data.py` script currently does not support template files, but may support them in a future version.
 
-# Steps to manage SCPs
+# Steps to manage Control Policies
 
 ## Managing this repository
 
-Before making changes, validate that the SCP statement(s) you are adding are not already implemented in another policy.
+Before making changes, validate that the RCP/SCP statement(s) you are adding are not already implemented in another policy.
 
 ## Adding new SCPs
 
