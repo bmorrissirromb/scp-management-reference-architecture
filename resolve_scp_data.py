@@ -98,6 +98,10 @@ def get_policy_attachments(
         os.path.join(current_path, f"*.{short_name}"), recursive=False
     ):
         base_name = os.path.basename(json).replace(f".{short_name}", "")
+        if re.search(r" ", base_name):
+            raise Exception(
+                f"The {policy_type} {base_name} (path: {current_path}) contains a space in its name. This is not allowed. Fix it before continuing."
+            )
         data_dict[base_name] = {
             "path": f"{current_path}/{base_name}.{short_name}",
             "targets": [current_target_id],
