@@ -1,14 +1,14 @@
 """
 Summary
-    This script will walk through the control_policies_ou_structure folder and generate SCP attachments based on its contents
+    This script will walk through the control_policies_ou_structure folder and generate RCP/SCP attachments based on its contents
 
 Input
-    A directory structure containing folders that match your AWS Organization, with JSON files representing SCP attachments.
+    A directory structure containing folders that match your AWS Organization, with JSON files representing control policy attachments.
 
 Output
-    A Terraform file that will create the SCP attachments using the `scp_module` like so:
+    A Terraform file that will create the CP attachments using the `control_policy_module` like so:
     module "Service_Baseline_Root" {
-        source          = "./scp_module"
+        source          = "./control_policy_module"
         ...
     }
 """
@@ -29,8 +29,8 @@ MAX_FOLDER_CUSTOM_POLICY_ATTACHMENTS = (
 CONTROL_POLICIES_FOLDER = "control_policies_ou_structure"
 CHILD_TYPES = ["ORGANIZATIONAL_UNIT", "ACCOUNT"]
 ACCOUNT_SUFFIX = "_ACCOUNT"  # Differentiates OU folders vs Account folders
-OUTPUT_FILE = "scp_define_attach_auto.tf"
-GLOBAL_SCP_NAME_LIST = (
+OUTPUT_FILE = "cp_define_attach_auto.tf"
+GLOBAL_POLICY_NAME_LIST = (
     []
 )  # TODO - Implement a check to ensure that same-named policies are not present
 
@@ -186,7 +186,7 @@ def get_policy_attachments(
                 )
             except FileNotFoundError:
                 raise FileNotFoundError(
-                    "The AWS OU structure contains a resource without a matching file/folder in the SCP repo. To resolve this, run the update_scp_ou_structure workflow."
+                    "The AWS OU structure contains a resource without a matching file/folder in this repo. To resolve this, run the update_scp_ou_structure workflow or generate_policies_ou_structure_and_imports.py."
                 )
 
     return data_dict
@@ -197,9 +197,9 @@ def get_terraform_resource_string(
     cp_name,
     # Path to the Control Policy JSON file, relative to the CONTROL_POLICIES_FOLDER
     cp_policy_path,
-    # List of targets to attach the SCP to
+    # List of targets to attach the control policy to
     cp_target_list,
-    # The SCP policy type
+    # The policy type
     cp_type,
 ):
     """

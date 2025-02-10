@@ -14,12 +14,12 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 AWSTemplateFormatVersion: "2010-09-09"
-Description: "Create a CI/CD pipeline for AWS Service Control Policy (SCP) Management"
+Description: "Create a CI/CD pipeline for AWS Control Policy (SCP/RCP) Management"
 
 # Prerequisites
 # This template may be deployed in the management account or an account that has been given Organizations permission to operate as a delegated admin.
 # There is technically no 'Organizations' delegated administrator, though Organizations does allow for granular permissions sharing.
-# For an overview of the policy required to give "SCP delegated administrator" permissions, see https://medium.com/cloud-security/delegating-scp-management-to-governance-team-via-aws-organizations-53334a31b71c
+# For an overview of the policy required to give "control policy delegated administrator" permissions, see https://medium.com/cloud-security/delegating-scp-management-to-governance-team-via-aws-organizations-53334a31b71c
 
 ## +--------------
 ## | Parameters
@@ -29,7 +29,7 @@ Parameters:
   nameConvention:
     Description: "Prefix that will be used to name resources in this stack (e.g. roles, events, pipeline)"
     Type: String
-    Default: scp
+    Default: ctrlpolicy
   tfVersion:
     Description: "Version of Terraform to use"
     Type: String
@@ -70,7 +70,7 @@ Resources:
             Action: sts:AssumeRole
       Path: /
       Policies:
-        - PolicyName: eb-scp-pipeline-execution
+        - PolicyName: eb-cp-pipeline-execution
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
@@ -91,7 +91,7 @@ Resources:
   EventRule:
     Type: AWS::Events::Rule
     Properties:
-      Name: "ScpPipelineChange"
+      Name: "CpPipelineChange"
       EventPattern:
         source:
           - aws.codecommit
@@ -106,7 +106,7 @@ Resources:
                 ":",
                 !Ref "AWS::AccountId",
                 ":",
-                !GetAtt ScpRepository.Name,
+                !GetAtt CpRepository.Name,
               ],
             ]
         detail:
@@ -131,15 +131,15 @@ Resources:
               ],
             ]
           RoleArn: !GetAtt EventRole.Arn
-          Id: codepipeline-TriggerScpPipeline
+          Id: codepipeline-TriggerCpPipeline
 
   ## +----------------------------------------
-  ## | Repository (Scp Management)
+  ## | Repository (Cp Management)
   ## +----------------------------------------
-  ScpRepository:
+  CpRepository:
     Type: AWS::CodeCommit::Repository
     Properties:
-      RepositoryDescription: "Repository to control AWS SCPs and assignments"
+      RepositoryDescription: "Repository to control AWS RCP/SCPs and assignments"
       RepositoryName: !Sub "${nameConvention}-repository"
 
   ## +---------------
@@ -163,7 +163,7 @@ Resources:
                 Version: "1"
                 Provider: CodeCommit
               Configuration:
-                RepositoryName: !GetAtt ScpRepository.Name
+                RepositoryName: !GetAtt CpRepository.Name
                 BranchName: !Ref branchName
                 PollForSourceChanges: false
               OutputArtifacts:
@@ -178,13 +178,13 @@ Resources:
                 Version: "1"
                 Provider: CodeBuild
               Configuration:
-                ProjectName: !Ref CodebuildResolveAndPlanScps
+                ProjectName: !Ref CodebuildResolveAndPlanCps
               RunOrder: 1
               InputArtifacts:
                 - Name: SourceArtifact
               OutputArtifacts:
-                - Name: ScpPlanArtifact
-            - Name: ScpManualApproval
+                - Name: CpPlanArtifact
+            - Name: CpManualApproval
               RunOrder: 2
               ActionTypeId:
                 Category: Approval
@@ -197,17 +197,17 @@ Resources:
                     - BlankSNSTopic
                     - !Ref "AWS::NoValue"
                     - !Ref snsTopicArn
-            - Name: ScpApply
+            - Name: CpApply
               ActionTypeId:
                 Category: Build
                 Owner: AWS
                 Version: "1"
                 Provider: CodeBuild
               Configuration:
-                ProjectName: !Ref CodebuildScpApply
+                ProjectName: !Ref CodebuildCpApply
               RunOrder: 3
               InputArtifacts:
-                - Name: "ScpPlanArtifact"
+                - Name: "CpPlanArtifact"
 
   ## +------------------------
   ## | IAM Role (CodePipeline)
@@ -244,7 +244,7 @@ Resources:
                   - codecommit:Get*
                   - codecommit:GitPull
                   - codecommit:UploadArchive
-                Resource: !GetAtt ScpRepository.Arn
+                Resource: !GetAtt CpRepository.Arn
               - !If
                 - BlankSNSTopic
                 - !Ref AWS::NoValue
@@ -283,7 +283,7 @@ Resources:
   ## +----------------------------------------
   ## | CodeBuild Project (Template Validation)
   ## +----------------------------------------
-  CodebuildResolveAndPlanScps:
+  CodebuildResolveAndPlanCps:
     Type: AWS::CodeBuild::Project
     Metadata:
       cfn_nag:
@@ -291,8 +291,8 @@ Resources:
           - id: W32
             reason: "No relevant artifact produced in projects. S3 bucket is also encrypted with managed key"
     Properties:
-      Name: !Sub ${nameConvention}-resolve-scps
-      ServiceRole: !GetAtt RoleCodebuildScp.Arn
+      Name: !Sub ${nameConvention}-resolve-Cps
+      ServiceRole: !GetAtt RoleCodebuildCp.Arn
       EncryptionKey: !GetAtt KmsKeyS3.Arn
       Environment:
         ComputeType: BUILD_GENERAL1_SMALL
@@ -303,7 +303,7 @@ Resources:
             Value: !Ref tfVersion
       Artifacts:
         Type: CODEPIPELINE
-        ArtifactIdentifier: "ScpPlanArtifact"
+        ArtifactIdentifier: "CpPlanArtifact"
       TimeoutInMinutes: 480
       Source:
         Type: CODEPIPELINE
@@ -319,10 +319,10 @@ Resources:
                 - echo "[INFO] [INSTALL] Installing finished"
             build:
               commands:
-                - chmod +x resolve_scp_data.py
-                - python3 resolve_scp_data.py
+                - chmod +x resolve_control_policy_data.py
+                - python3 resolve_control_policy_data.py
                 - terraform init
-                - terraform plan -out=scp_tf_plan.out
+                - terraform plan -out=cp_tf_plan.out
           artifacts:
             files:
               - ./**/*
@@ -331,7 +331,7 @@ Resources:
   ## +---------------------------------------
   ## | IAM Service Role (Template Validation)
   ## +---------------------------------------
-  RoleCodebuildScp:
+  RoleCodebuildCp:
     Type: AWS::IAM::Role
     Metadata:
       cfn_nag:
@@ -438,7 +438,7 @@ Resources:
                   - "organizations:ListTagsForResource"
                 Resource:
                   - "*"
-              - Sid: UpdateSCPsAndAttachments
+              - Sid: UpdateCPsAndAttachments
                 Effect: Allow
                 Action:
                   - "organizations:CreatePolicy"
@@ -449,6 +449,7 @@ Resources:
                   - "organizations:EnablePolicyType"
                   - "organizations:DisablePolicyType"
                 Resource:
+                  - "arn:aws:organizations::*:policy/*/resource_control_policy/*"
                   - "arn:aws:organizations::*:policy/*/service_control_policy/*"
                   - "arn:aws:organizations::*:account/*/*"
                   - "arn:aws:organizations::*:ou/*/*"
@@ -463,9 +464,9 @@ Resources:
               - "sts:AssumeRole"
 
   ## +-----------------------------------
-  ## | CodeBuild Project (SCP Apply)
+  ## | CodeBuild Project (CP Apply)
   ## +-----------------------------------
-  CodebuildScpApply:
+  CodebuildCpApply:
     Type: AWS::CodeBuild::Project
     Metadata:
       cfn_nag:
@@ -473,8 +474,8 @@ Resources:
           - id: W32
             reason: "No relevant artifact produced in projects. S3 bucket is also encrypted with managed key"
     Properties:
-      Name: !Sub ${nameConvention}-scp-apply
-      ServiceRole: !GetAtt RoleCodebuildScp.Arn
+      Name: !Sub ${nameConvention}-cp-apply
+      ServiceRole: !GetAtt RoleCodebuildCp.Arn
       EncryptionKey: !GetAtt KmsKeyS3.Arn
       Environment:
         ComputeType: BUILD_GENERAL1_SMALL
@@ -497,12 +498,13 @@ Resources:
             build:
               commands:
                 - ./usr/bin/terraform init
-                - ./usr/bin/terraform apply -auto-approve scp_tf_plan.out
+                - ./usr/bin/terraform apply -auto-approve cp_tf_plan.out
 
   ## +-------------------
   ## | S3 Bucket Artifact
   ## +-------------------
   artifactsBucket:
+    #checkov:skip=CKV_AWS_18:There is no need to enable logging in this bucket.
     Type: "AWS::S3::Bucket"
     Metadata:
       cfn_nag:
