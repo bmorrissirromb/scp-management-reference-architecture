@@ -78,6 +78,24 @@ def get_policy_attachments(
     org_client,
     policy_type,
 ):
+    """
+    Summary
+    This function will walk through the control_policies_ou_structure folder and generate policy attachments based on its contents.
+    It will also recursively call itself to walk through the entire Organization.
+    It will also check for the presence of more than 4 attachments in an account or ROOT, and raise an exception if found.
+    It will also check for the presence of more than 2 attachments in an OU, and raise an exception if found.
+    Inputs
+    current_target_id - an identifier for the Organization root, OU, or account
+    current_path      - the filesystem path
+    data_dict         - The output dictionary that maps control policy names to source file paths and attachment target IDs.
+                        This is passed as an input argument so that the recursive function updates the dictionary.
+    org_client        - boto3 client for accessing Organizations API
+    policy_type       - The name of the type of Control Policy being queried (eg. SERVICE_CONTROL_POLICY)
+    Outputs
+    data_dict - The output dictionary that maps control policy names to source file paths and attachment target IDs
+    Notes
+    This function will call itself recursively in order to walk through the entire Organization
+    """
     # Get Shortname
     if policy_type == "RESOURCE_CONTROL_POLICY":
         short_name = "rcp"
@@ -111,7 +129,7 @@ def get_policy_attachments(
         logging.info(
             f"Pulling policy attachment info for {shared_json} within {current_path}"
         )
-        base_name = os.path.basename(shared_json).replace(".{short_name}.shared", "")
+        base_name = os.path.basename(shared_json).replace(f".{short_name}.shared", "")
         if data_dict.get(base_name, ""):
             data_dict[base_name]["targets"].append(current_target_id)
         else:
@@ -120,28 +138,37 @@ def get_policy_attachments(
                 "targets": [current_target_id],
             }
     # Get all child OUs and Accounts
-    for child_type in CHILD_TYPES:
+    for child_type in ["ORGANIZATIONAL_UNIT", "ACCOUNT"]:
+        # Don't recurse into accounts
         if re.match(r"\d{12}", current_target_id):
-            # Don't recurse into accounts
             continue
+        # Get all child OUs and Accounts for the current OU
         children = org_client.list_children(
             ParentId=current_target_id, ChildType=child_type
         )
         while "NextToken" in children:
-            children.append(
+            next_token_response = children.append(
                 org_client.list_children(
                     ParentId=current_target_id,
                     ChildType=child_type,
                     NextToken=children["NextToken"],
                 )
             )
+            for next_child in next_token_response["Children"]:
+                children["Children"].append(next_child)
+            if "NextToken" in next_token_response:
+                children["NextToken"] = next_token_response["NextToken"]
+            else:
+                del children["NextToken"]
+        # Make a recursive call for each sub-OU or Account
         for child in children["Children"]:
             object_id = child["Id"]
+            # Get the child path names from OUs/Accounts
             if child_type == "ORGANIZATIONAL_UNIT":
                 child_path_name = org_client.describe_organizational_unit(
                     OrganizationalUnitId=object_id
                 )["OrganizationalUnit"]["Name"]
-            else:
+            elif child_type == "ACCOUNT":
                 child_path_name = (
                     org_client.describe_account(AccountId=object_id)["Account"]["Name"]
                     + ACCOUNT_SUFFIX
@@ -176,7 +203,9 @@ def get_terraform_resource_string(
     cp_type,
 ):
     """
-    This function will return a string that represents a Terraform resource
+    Summary
+    This function will return a string that represents a Terraform resource.
+    This could theoretically be replaced/refactored by using jinja templating.
     """
     cp_policy_path = cp_policy_path.replace("\\", "/")
     cp_target_list_string = ", ".join(f'"{s}"' for s in cp_target_list)
