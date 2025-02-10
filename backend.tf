@@ -2,7 +2,7 @@
 terraform {
   backend "s3" {
     encrypt        = "true"
-    bucket         = "iam-identitycenter-730335412016-tf-state"
+    bucket         = "iam-identitycenter-<YOUR ACCOUNT ID>-tf-state"
     dynamodb_table = "tf-state-lock"
     key            = "scp.tfstate"
     region         = "us-east-2" # UPDATE REGION IF YOU DON'T LOVE OHIO
