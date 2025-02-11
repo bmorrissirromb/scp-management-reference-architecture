@@ -230,9 +230,6 @@ def main():
     org_client = boto3.client("organizations")
     root = org_client.list_roots()["Roots"][0]
     root_id = root["Id"]
-    # The data dictionary will keep track of control policy names, source paths, and targets
-    data_dict = {}
-
     # Delete the output file if it exists so that we're starting fresh
     if os.path.exists(OUTPUT_FILE):
         os.remove(OUTPUT_FILE)
@@ -248,7 +245,7 @@ def main():
         data_dict = get_policy_attachments(
             current_target_id=current_target_id,
             current_path=current_path,
-            data_dict=data_dict,
+            data_dict={},
             org_client=org_client,
             policy_type=current_policy_type,
         )
